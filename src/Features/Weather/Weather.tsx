@@ -5,7 +5,7 @@ import LinearProgress from '@material-ui/core/LinearProgress';
 import { toast } from 'react-toastify';
 import { Avatar } from '@material-ui/core';
 import Chip from '../../components/Chip';
-import { getWeatherForLocation } from './queries';
+import { getWeatherForLocationQuery } from './queries';
 
 /*
 
@@ -43,7 +43,7 @@ const Weather = React.memo(() => {
   const [currentWeather, setCurrentWeather] = React.useState<WeatherData | null>(null);
 
   const [result, retry] = useQuery<WeatherResponse>({
-    query: getWeatherForLocation,
+    query: getWeatherForLocationQuery,
     variables: {
       latLong,
     },
