@@ -14,7 +14,9 @@ const useStyles = makeStyles({
 export default () => {
   const classes = useStyles();
 
+  // eslint-disable-next-line quotes
   const name = "eduardo's";
+
   return (
     <AppBar position="static">
       <Toolbar>

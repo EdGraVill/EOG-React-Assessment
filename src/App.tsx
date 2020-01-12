@@ -1,9 +1,18 @@
 import React from 'react';
-import createStore from './store';
 import { Provider } from 'react-redux';
 import { ToastContainer } from 'react-toastify';
 import { MuiThemeProvider, createMuiTheme } from '@material-ui/core/styles';
 import CssBaseline from '@material-ui/core/CssBaseline';
+import {
+  Provider as URGLProvider,
+  createClient,
+  dedupExchange,
+  cacheExchange,
+  fetchExchange,
+  subscriptionExchange,
+} from 'urql';
+import { SubscriptionClient } from 'subscriptions-transport-ws';
+import createStore from './store';
 import 'react-toastify/dist/ReactToastify.css';
 import Header from './components/Header';
 import Wrapper from './components/Wrapper';
@@ -24,16 +33,34 @@ const theme = createMuiTheme({
   },
 });
 
+const subscriptionClient = new SubscriptionClient('wss://react.eogresources.com/graphql', {
+  reconnect: true,
+});
+
+const gqlClient = createClient({
+  url: 'https://react.eogresources.com/graphql',
+  exchanges: [
+    dedupExchange,
+    cacheExchange,
+    fetchExchange,
+    subscriptionExchange({
+      forwardSubscription: operation => subscriptionClient.request(operation),
+    }),
+  ],
+});
+
 const App = () => (
   <MuiThemeProvider theme={theme}>
     <CssBaseline />
-    <Provider store={store}>
-      <Wrapper>
-        <Header />
-        <NowWhat />
-        <ToastContainer />
-      </Wrapper>
-    </Provider>
+    <URGLProvider value={gqlClient}>
+      <Provider store={store}>
+        <Wrapper>
+          <Header />
+          <NowWhat />
+          <ToastContainer />
+        </Wrapper>
+      </Provider>
+    </URGLProvider>
   </MuiThemeProvider>
 );
 

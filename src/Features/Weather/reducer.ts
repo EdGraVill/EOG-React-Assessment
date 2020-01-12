@@ -30,9 +30,9 @@ const slice = createSlice({
       state.description = description;
       state.locationName = locationName;
     },
-    weatherApiErrorReceived: (state, action: PayloadAction<ApiErrorAction>) => state,
+    weatherApiErrorReceived: state => state,
   },
 });
 
-export const reducer = slice.reducer;
-export const actions = slice.actions;
+export const { reducer } = slice;
+export const { actions } = slice;
