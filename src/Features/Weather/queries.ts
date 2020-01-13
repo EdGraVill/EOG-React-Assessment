@@ -1,4 +1,4 @@
-export const getWeatherForLocation = `
+export const getWeatherForLocationQuery = `
 query($latLong: WeatherQuery!) {
   getWeatherForLocation(latLong: $latLong) {
     description
