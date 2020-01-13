@@ -16,7 +16,6 @@ import createStore from './store';
 import 'react-toastify/dist/ReactToastify.css';
 import Header from './components/Header';
 import Wrapper from './components/Wrapper';
-import NowWhat from './components/NowWhat';
 import MeasureTiles from './Features/MeasureTiles/MeasureTiles';
 
 const store = createStore();
@@ -58,7 +57,7 @@ const App = () => (
         <Wrapper>
           <Header />
           <MeasureTiles />
-          <NowWhat />
+          {/* <NowWhat /> Thank you for the guide */}
           <ToastContainer />
         </Wrapper>
       </Provider>

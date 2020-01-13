@@ -39,3 +39,24 @@ export const getLastKnownMeasurementQuery = `
 export interface GetLastKnownMeasurementResult {
   getLastKnownMeasurement: Measure;
 }
+
+export const getMeasurementsQuery = `
+  query($metricName: String!, $after: Timestamp, $before: Timestamp) {
+    getMeasurements(
+      input: {
+        metricName: $metricName
+        after: $after
+        before: $before
+      }
+    ) {
+      metric
+      at
+      value
+      unit
+    }
+  }
+`;
+
+export interface GetMeasurementsResult {
+  getMeasurements: Measure[];
+}

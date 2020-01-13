@@ -82,13 +82,28 @@ const slice = createSlice({
         {},
       );
     },
-    pushMeasure: (state, action: PayloadAction<NewMeasure>) => {
-      const { at, metric } = action.payload;
-      const { origin, ...metricData } = action.payload;
+    pushMeasure: (state, action: PayloadAction<NewMeasure | NewMeasure[]>) => {
+      const { at, metric, origin, ...rest } =
+        action.payload instanceof Array ? action.payload.sort((a, b) => b.at - a.at)[0] : action.payload;
+
+      const toAdd =
+        action.payload instanceof Array
+          ? {
+              ...action.payload.reduce(
+                (prev, curr) => ({
+                  ...prev,
+                  [curr.at]: curr,
+                }),
+                {},
+              ),
+            }
+          : {
+              [at]: { at, metric, ...rest },
+            };
 
       // Store the result. I used object type instead array to avoid duplicity
       state.measureList[metric] = {
-        [at]: metricData,
+        ...toAdd,
         ...state.measureList[metric],
       };
 
@@ -109,7 +124,11 @@ const slice = createSlice({
        */
 
       if (!existLatestMeasure || (isLiveOrIsUpdate && isNewest)) {
-        state.latestMeasure[metric] = metricData;
+        state.latestMeasure[metric] = {
+          at,
+          metric,
+          ...rest,
+        };
       }
     },
     updateConfig: (state, action: PayloadAction<ChangeConfig>) => {

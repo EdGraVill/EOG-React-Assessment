@@ -14,11 +14,18 @@ import {
   Button,
   CircularProgress,
   makeStyles,
+  Collapse,
 } from '@material-ui/core';
 import UpdateIcon from '@material-ui/icons/Refresh';
 import { Store } from '../../store';
-import { Measure, actions } from './reducer';
-import { GetLastKnownMeasurementResult, getLastKnownMeasurementQuery } from './queries';
+import { Measure, actions, NewMeasure } from './reducer';
+import {
+  GetLastKnownMeasurementResult,
+  getLastKnownMeasurementQuery,
+  getMeasurementsQuery,
+  GetMeasurementsResult,
+} from './queries';
+import Chart from './Chart';
 
 const icons: { [metric: string]: string | undefined } = {
   waterTemp: 'https://cdn2.iconfinder.com/data/icons/car-parts-8/128/yumminky-cars-96-512.png',
@@ -26,13 +33,13 @@ const icons: { [metric: string]: string | undefined } = {
     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTi86KNpsu3_qlAZiktqKxTqXtKzVm8YHpOkXug_3XwbbnWFnh8&s',
   injValveOpen: undefined,
   flareTemp:
-    'https://i.dlpng.com/static/png/3953525-temp-temperature-thermometer-icon-png-and-vector-for-free-temperature-png-black-and-white-512_512_preview.webp',
+    'https://p7.hiclipart.com/preview/479/782/496/thermometer-computer-icons-temperature-degree-symbol-symbol.jpg',
   oilTemp: 'https://user-images.githubusercontent.com/45227578/54439838-dd1ec500-4739-11e9-98b3-81a4324444da.png',
   tubingPressure:
     'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT6NYh49K91SfYDrsegteQ-yOCRzxv4qIMs5H8h1vn3fo7DpkTm&s',
 };
 
-const titles: { [metric: string]: string | undefined } = {
+export const titles: { [metric: string]: string | undefined } = {
   waterTemp: 'Water Temperature',
   casingPressure: 'Casing Pressure',
   injValveOpen: 'Injection Valve Open',
@@ -44,7 +51,7 @@ const titles: { [metric: string]: string | undefined } = {
 const useStyles = makeStyles({
   card: {
     margin: '2rem .5rem 0',
-    minWidth: 380,
+    minWidth: 480,
   },
   subHeaderCard: {
     fontSize: '10px',
@@ -63,6 +70,10 @@ const MeasureTile: React.FC<MeasureTileProps> = ({ metricName }) => {
   const dispatch = useDispatch();
   const measure = useSelector<Store, Measure>(store => store.measures.latestMeasure[metricName]);
   const isLive = useSelector<Store, boolean>(store => store.measures.config[metricName].liveData);
+
+  const [alreadyFilled, setAlreadyFilled] = React.useState<boolean>(false);
+  const [showChart, setShowChart] = React.useState<boolean>(false);
+  const switchShowChart = () => setShowChart(!showChart);
 
   const switchLiveUpdate = () => {
     dispatch(actions.updateConfig({ configName: 'liveData', metric: metricName, value: !isLive }));
@@ -83,6 +94,39 @@ const MeasureTile: React.FC<MeasureTileProps> = ({ metricName }) => {
     }
   }, [dispatch, data, error]);
 
+  const [remainingData, getMoreData] = useQuery<GetMeasurementsResult>({
+    query: getMeasurementsQuery,
+    variables: {
+      metricName,
+      after: Date.now() - 150 * 2000,
+      before: Date.now(),
+    },
+    pause: true,
+  });
+  const { fetching: fetchingList, data: dataList, error: errorList } = remainingData;
+
+  React.useEffect(() => {
+    if (!fetchingList && !fetching && !dataList && data) {
+      getMoreData();
+    }
+    if (errorList) {
+      dispatch(actions.measuresApiErrorReceived({ error: errorList.message }));
+    }
+    if (!fetchingList && dataList?.getMeasurements && !alreadyFilled) {
+      dispatch(
+        actions.pushMeasure(
+          dataList.getMeasurements.map(
+            (nMeasure: Measure): NewMeasure => ({
+              ...nMeasure,
+              origin: 'live',
+            }),
+          ),
+        ),
+      );
+      setAlreadyFilled(true);
+    }
+  }, [data, fetchingList, dataList, errorList, dispatch, getMoreData, fetching, alreadyFilled]);
+
   const classes = useStyles();
 
   const AvatarContent = icons[metricName] ? (
@@ -93,7 +137,11 @@ const MeasureTile: React.FC<MeasureTileProps> = ({ metricName }) => {
 
   const Action = (
     <FormGroup>
-      <FormControlLabel control={<Switch checked={isLive} onChange={switchLiveUpdate} />} label="Live" />
+      <FormControlLabel
+        control={<Switch size="small" checked={isLive} onChange={switchLiveUpdate} />}
+        label="Live"
+        labelPlacement="top"
+      />
     </FormGroup>
   );
 
@@ -103,7 +151,7 @@ const MeasureTile: React.FC<MeasureTileProps> = ({ metricName }) => {
         avatar={AvatarContent}
         action={Action}
         title={titles[metricName] || metricName}
-        subheader={`At: ${measure ? new Date(measure.at).toUTCString() : 'Updating...'}`}
+        subheader={`At ${measure ? new Date(measure.at).toUTCString() : 'Updating...'}`}
         subheaderTypographyProps={{ className: classes.subHeaderCard }}
       />
       <CardContent>
@@ -131,10 +179,13 @@ const MeasureTile: React.FC<MeasureTileProps> = ({ metricName }) => {
         >
           Update
         </Button>
-        <Button variant="outlined" color="primary">
+        <Button variant="outlined" color="primary" onClick={switchShowChart}>
           Historical chart
         </Button>
       </CardActions>
+      <Collapse in={showChart} timeout="auto" unmountOnExit>
+        <Chart metricName={metricName} />
+      </Collapse>
     </Card>
   );
 };
