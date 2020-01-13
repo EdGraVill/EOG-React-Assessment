@@ -1,5 +1,5 @@
-import { reducer as weatherReducer } from '../Features/Weather/reducer';
+import { reducer as measuresReducer, name as measures } from '../Features/MeasureTiles/reducer';
 
 export default {
-  weather: weatherReducer,
+  [measures]: measuresReducer,
 };

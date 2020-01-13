@@ -1,71 +1,82 @@
 import React, { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { actions } from './reducer';
-import { Provider, createClient, useQuery } from 'urql';
+import { useQuery } from 'urql';
 import { useGeolocation } from 'react-use';
 import LinearProgress from '@material-ui/core/LinearProgress';
+import { toast } from 'react-toastify';
+import { Avatar } from '@material-ui/core';
 import Chip from '../../components/Chip';
-import { IState } from '../../store';
+import { getWeatherForLocationQuery } from './queries';
 
-const client = createClient({
-  url: 'https://react.eogresources.com/graphql',
-});
+/*
 
-const query = `
-query($latLong: WeatherQuery!) {
-  getWeatherForLocation(latLong: $latLong) {
-    description
-    locationName
-    temperatureinCelsius
-  }
+I'll disconnect this component from the redux beacause there isn't a reason to share its status.
+Share unused state in the redux is a bad practice.
+
+And also I'll move the urql Provider to App.tsx
+
+*/
+const weatherIcon =
+  'https://icons-for-free.com/iconfiles/png/512/forecast+partly+cloudy+weather+icon-1320196484400215944.png';
+
+interface WeatherData {
+  description: string;
+  locationName: string;
+  temperatureinCelsius: number;
 }
-`;
 
-const getWeather = (state: IState) => {
-  const { temperatureinFahrenheit, description, locationName } = state.weather;
-  return {
-    temperatureinFahrenheit,
-    description,
-    locationName,
-  };
-};
+interface WeatherResponse {
+  getWeatherForLocation: WeatherData;
+}
 
-export default () => {
-  return (
-    <Provider value={client}>
-      <Weather />
-    </Provider>
-  );
-};
+const toF = (c: number) => (c * 9) / 5 + 32;
 
-const Weather = () => {
+const Weather = React.memo(() => {
+  // Location
   const getLocation = useGeolocation();
   // Default to houston
   const latLong = {
     latitude: getLocation.latitude || 29.7604,
     longitude: getLocation.longitude || -95.3698,
   };
-  const dispatch = useDispatch();
-  const { temperatureinFahrenheit, description, locationName } = useSelector(getWeather);
 
-  const [result] = useQuery({
-    query,
+  // Store data or null
+  const [currentWeather, setCurrentWeather] = React.useState<WeatherData | null>(null);
+
+  const [result, retry] = useQuery<WeatherResponse>({
+    query: getWeatherForLocationQuery,
     variables: {
       latLong,
     },
   });
   const { fetching, data, error } = result;
+
   useEffect(() => {
     if (error) {
-      dispatch(actions.weatherApiErrorReceived({ error: error.message }));
-      return;
+      toast.error(`Error Received: ${error.message}`);
     }
-    if (!data) return;
-    const { getWeatherForLocation } = data;
-    dispatch(actions.weatherDataRecevied(getWeatherForLocation));
-  }, [dispatch, data, error]);
+
+    if (data && data.getWeatherForLocation) {
+      setCurrentWeather(data.getWeatherForLocation);
+    }
+  }, [data, error]);
 
   if (fetching) return <LinearProgress />;
 
-  return <Chip label={`Weather in ${locationName}: ${description} and ${temperatureinFahrenheit}°`} />;
-};
+  // If data is null make it retryable making a resilient component
+  const text = currentWeather
+    ? `Weather in ${currentWeather.locationName}: ${currentWeather.description} and ${toF(
+        currentWeather.temperatureinCelsius,
+      )}°`
+    : 'Click to retry';
+
+  return (
+    <Chip
+      avatar={<Avatar src={weatherIcon} />}
+      clickable={!currentWeather}
+      label={text}
+      onClick={() => !currentWeather && retry()}
+    />
+  );
+});
+
+export default Weather;
